@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import NoteCard from "../components/NoteCard.jsx";
 import NoteForm from "../components/NoteForm.jsx";
+import FileUpload from "../components/FileUpload.jsx";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4041";
 
 export default function NotesPage() {
   const [notes, setNotes] = useState([]);
+  const [files, setFiles] = useState({}); // Map of noteId -> files array
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editingNote, setEditingNote] = useState(null);
@@ -19,6 +21,23 @@ export default function NotesPage() {
         withCredentials: true,
       });
       setNotes(res.data);
+
+      // Load files for all notes
+      const filesMap = {};
+      for (const note of res.data) {
+        try {
+          const filesRes = await axios.get(
+            `${API_BASE}/notes/${note.id}/files`,
+            {
+              withCredentials: true,
+            },
+          );
+          filesMap[note.id] = filesRes.data.files;
+        } catch (err) {
+          filesMap[note.id] = [];
+        }
+      }
+      setFiles(filesMap);
     } catch (err) {
       setError(
         err?.response?.data?.error || err?.message || "Failed to load notes",
@@ -39,6 +58,7 @@ export default function NotesPage() {
         withCredentials: true,
       });
       setNotes((current) => [res.data, ...current]);
+      setFiles((current) => ({ ...current, [res.data.id]: [] }));
     } catch (err) {
       setError(
         err?.response?.data?.error || err?.message || "Failed to create note",
@@ -71,6 +91,11 @@ export default function NotesPage() {
     try {
       await axios.delete(`${API_BASE}/notes/${id}`, { withCredentials: true });
       setNotes((current) => current.filter((note) => note.id !== id));
+      setFiles((current) => {
+        const newFiles = { ...current };
+        delete newFiles[id];
+        return newFiles;
+      });
       if (editingNote?.id === id) {
         setEditingNote(null);
       }
@@ -79,6 +104,13 @@ export default function NotesPage() {
         err?.response?.data?.error || err?.message || "Failed to delete note",
       );
     }
+  };
+
+  const handleFilesUploaded = (uploadedFiles, noteId) => {
+    setFiles((current) => ({
+      ...current,
+      [noteId]: [...(current[noteId] || []), ...uploadedFiles],
+    }));
   };
 
   const emptyState = !loading && notes.length === 0;
@@ -93,6 +125,22 @@ export default function NotesPage() {
             onSubmit={editingNote ? handleUpdate : handleCreate}
             onCancel={editingNote ? () => setEditingNote(null) : undefined}
           />
+
+          {editingNote && (
+            <div className="mt-6 space-y-3 border-t border-slate-700 pt-6">
+              <h3 className="text-sm font-semibold text-slate-300">
+                Upload files
+              </h3>
+              <FileUpload
+                noteId={editingNote.id}
+                onFilesUploaded={(uploadedFiles) =>
+                  handleFilesUploaded(uploadedFiles, editingNote.id)
+                }
+                onError={(msg) => setError(msg)}
+              />
+            </div>
+          )}
+
           {error && (
             <p className="mt-4 rounded-xl border border-rose-900/70 bg-rose-950/40 px-4 py-3 text-sm text-rose-200">
               {error}
@@ -133,6 +181,7 @@ export default function NotesPage() {
                 <NoteCard
                   key={note.id}
                   note={note}
+                  files={files[note.id] || []}
                   onEdit={() => setEditingNote(note)}
                   onDelete={() => handleDelete(note.id)}
                 />

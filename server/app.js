@@ -3,10 +3,17 @@ import dotenv from 'dotenv/config';
 import express from 'express'
 
 import { initializeDatabase } from './db/init.js';
+import { ensureBucketExists } from './config/minio.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
 await initializeDatabase();
+
+// Initialize MinIO asynchronously without blocking startup
+ensureBucketExists().catch(err => {
+  console.warn('⚠️ MinIO not available at startup:', err.message);
+  console.warn('File uploads will not work until MinIO is running');
+});
 
 import userRouter from './routes/userRouter.js';
 import authRouter from './models/authRouter.js';
