@@ -4,6 +4,33 @@ import { createUser, getUserByEmail } from '../models/userModel.js';
 
 const SALT_ROUNDS = 10;
 
+const cookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET is not set');
+  }
+  return secret;
+};
+
+const setAuthCookie = (res, token) => {
+  res.cookie('token', token, cookieOptions);
+};
+
+const clearAuthCookie = (res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  });
+};
+
 // REGISTER
 export const register = async (req, res) => {
   try {
@@ -30,13 +57,8 @@ export const register = async (req, res) => {
     });
 
     // create token and set as httpOnly cookie
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    const token = jwt.sign({ userId: user.id }, getJwtSecret(), { expiresIn: '7d' });
+    setAuthCookie(res, token);
 
     res.status(201).json({
       user: {
@@ -76,17 +98,12 @@ export const login = async (req, res) => {
     // generate token
     const token = jwt.sign(
       { userId: user.id },
-      process.env.JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: '7d' }
     );
 
     // set token as httpOnly cookie (frontend should use credentials: 'include')
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    setAuthCookie(res, token);
 
     res.json({
       user: {
@@ -98,4 +115,29 @@ export const login = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+};
+
+export const me = async (req, res) => {
+  try {
+    const token = req.cookies?.token;
+
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const decoded = jwt.verify(token, getJwtSecret());
+
+    return res.status(200).json({
+      user: {
+        id: decoded.userId,
+      },
+    });
+  } catch (err) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+};
+
+export const logout = async (req, res) => {
+  clearAuthCookie(res);
+  return res.status(200).json({ message: 'Logged out' });
 };
