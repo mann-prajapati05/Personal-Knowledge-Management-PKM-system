@@ -1,3 +1,3 @@
-export const userLogin = (req,res)=>{
+export const user = (req,res)=>{
 
 };
