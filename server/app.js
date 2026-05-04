@@ -4,11 +4,13 @@ import express from 'express'
 
 import { initializeDatabase } from './db/init.js';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 
 await initializeDatabase();
 
 import userRouter from './routes/userRouter.js';
 import authRouter from './models/authRouter.js';
+import noteRouter from './routes/note.routes.js';
 
 const app=express();
 
@@ -18,6 +20,7 @@ app.use(cors({
     credentials:true,
 }));
 app.use(express.json());
+app.use(cookieParser());
 
 app.use('/', (req, res, next) => {
     console.log(req.url, req.method);
@@ -25,6 +28,7 @@ app.use('/', (req, res, next) => {
 });
 
 app.use('/auth', authRouter);
+app.use('/notes', noteRouter);
 
 const PORT=process.env.PORT || 4041;
 app.listen(PORT,()=>{
