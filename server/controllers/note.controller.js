@@ -5,6 +5,11 @@ import {
   updateNote as updateNoteQuery,
   deleteNote as deleteNoteQuery,
 } from '../models/note.model.js';
+import { getCache, invalidateCache, setCache } from '../config/redis.js';
+
+const NOTES_CACHE_TTL = 60;
+
+const getNotesCacheKey = (userId) => `notes:${userId}`;
 
 const normalizeTags = (tags) => {
   if (Array.isArray(tags)) return tags;
@@ -27,6 +32,8 @@ export const createNote = async (req, res) => {
       tags: normalizeTags(tags),
     });
 
+    await invalidateCache(getNotesCacheKey(req.user.id));
+
     return res.status(201).json(note);
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -35,7 +42,17 @@ export const createNote = async (req, res) => {
 
 export const getAllNotes = async (req, res) => {
   try {
+    const cacheKey = getNotesCacheKey(req.user.id);
+    const cachedNotes = await getCache(cacheKey);
+
+    if (cachedNotes !== null) {
+      return res.status(200).json(cachedNotes);
+    }
+
     const notes = await getAllNotesByUserId(req.user.id);
+
+    await setCache(cacheKey, notes, NOTES_CACHE_TTL);
+
     return res.status(200).json(notes);
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -80,6 +97,8 @@ export const updateNote = async (req, res) => {
       return res.status(404).json({ error: 'Note not found' });
     }
 
+    await invalidateCache(getNotesCacheKey(req.user.id));
+
     return res.status(200).json(updated);
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -97,6 +116,8 @@ export const deleteNote = async (req, res) => {
     if (!deleted) {
       return res.status(404).json({ error: 'Note not found' });
     }
+
+    await invalidateCache(getNotesCacheKey(req.user.id));
 
     return res.status(204).send();
   } catch (error) {

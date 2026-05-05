@@ -11,6 +11,7 @@ services:
     depends_on:
       - postgres
       - minio
+      - redis
     networks:
       - app-network
 
@@ -56,9 +57,19 @@ services:
     networks:
       - app-network
 
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: always
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+
 volumes:
   pgdata:
   minio-data:
+  redis-data:
 
 networks:
   app-network:
