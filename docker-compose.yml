@@ -32,7 +32,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Mann8314
+      POSTGRES_PASSWORD: Mypostgres
       POSTGRES_DB: pkm_system
     ports:
       - "5432:5432"
