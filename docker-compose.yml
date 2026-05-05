@@ -5,7 +5,7 @@ services:
     build: ./server
     container_name: backend
     ports:
-      - "4040:4040"
+      - "5000:5000"
     env_file:
       - ./server/.env
     depends_on:
@@ -19,6 +19,8 @@ services:
     container_name: frontend
     ports:
       - "5173:5173"
+    env_file:
+    - ./client/.env
     depends_on:
       - backend
     networks:

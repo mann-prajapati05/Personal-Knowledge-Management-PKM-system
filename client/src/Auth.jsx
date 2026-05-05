@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4041";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://backend:5000";
 
 export default function Auth({ initialMode = "login" }) {
   const navigate = useNavigate();
