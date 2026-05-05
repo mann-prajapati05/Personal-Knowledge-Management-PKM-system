@@ -14,7 +14,7 @@ redisClient.on('error', () => {});
 
 let connectPromise = null;
 
-const ensureRedisConnection = async () => {
+export const ensureRedisConnection = async () => {
   if (redisClient.isOpen) {
     return true;
   }
