@@ -25,8 +25,43 @@ export const ensureBucketExists = async () => {
     if (!exists) {
       await client.makeBucket(bucketName, 'us-east-1');
       console.log(`✅ MinIO bucket '${bucketName}' created`);
+
+      // Set bucket policy to public
+      const policy = {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Principal: '*',
+            Action: ['s3:GetObject'],
+            Resource: `arn:aws:s3:::${bucketName}/*`,
+          },
+        ],
+      };
+
+      await client.setBucketPolicy(bucketName, JSON.stringify(policy));
+      console.log(`✅ MinIO bucket '${bucketName}' set to public`);
     } else {
       console.log(`✅ MinIO bucket '${bucketName}' exists`);
+      
+      // Ensure bucket policy is set to public (in case it wasn't before)
+      try {
+        const policy = {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Principal: '*',
+              Action: ['s3:GetObject'],
+              Resource: `arn:aws:s3:::${bucketName}/*`,
+            },
+          ],
+        };
+        await client.setBucketPolicy(bucketName, JSON.stringify(policy));
+        console.log(`✅ MinIO bucket '${bucketName}' policy updated to public`);
+      } catch (policyError) {
+        console.warn(`⚠️  Could not update bucket policy: ${policyError.message}`);
+      }
     }
   } catch (error) {
     console.error('❌ MinIO bucket error:', error.message);

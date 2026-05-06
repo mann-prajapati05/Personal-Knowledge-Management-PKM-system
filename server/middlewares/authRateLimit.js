@@ -19,7 +19,7 @@ export const authRateLimit = async (req, res, next) => {
       await redisClient.expire(key, AUTH_RATE_LIMIT_WINDOW_SECONDS);
     }
 
-    if (requests > AUTH_RATE_LIMIT) {
+    if (requests >= AUTH_RATE_LIMIT) {
       const ttl = await redisClient.ttl(key);
       const retryAfter = ttl > 0 ? ttl : AUTH_RATE_LIMIT_WINDOW_SECONDS;
 
